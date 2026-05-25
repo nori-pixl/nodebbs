@@ -3,37 +3,45 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 const app = express();
+// Render環境のポート、またはローカルの3000番ポートを使用
 const PORT = process.env.PORT || 3000;
 
-// ESMで__dirnameを再現
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// フォームのデータを解析する設定
+// HTMLのフォームから送信されるデータを解析するための設定
 app.use(express.urlencoded({ extended: true }));
 
-// 投稿データを保存する配列（サーバーを再起動すると消えます）
+// 投稿データ（iframeの文字列など）を一時保存する配列（サーバー再起動でリセットされます）
 const posts = [];
 
-// 掲示板ページの表示
+// 1. トップページ（/）にアクセスされたら、先ほどの index.html を表示する
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// 投稿データ（API）の取得
+// 2. HTML側の「loadPosts()」が、投稿一覧データを取得するためのルート（API）
 app.get('/api/posts', (req, res) => {
     res.json(posts);
 });
 
-// 新しい投稿の受付
+// 3. HTML側の「submit」イベントから、データを受け取って保存するルート
 app.post('/post', (req, res) => {
-    const { name, message } = req.body;
-    if (name && message) {
-        posts.unshift({ name, message, time: new Date().toLocaleString('ja-JP') });
+    const { message } = req.body;
+    
+    if (message && message.trim() !== "") {
+        // 配列の先頭に新しい投稿を追加（投稿日時も一緒に記録）
+        posts.unshift({ 
+            message: message, 
+            time: new Date().toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' }) 
+        });
     }
-    res.redirect('/');
+    
+    // 保存が成功したことを示すステータス（200 OK）を返却
+    res.sendStatus(200);
 });
 
+// サーバーの起動
 app.listen(PORT, () => {
-    console.log(`Server is running on http://localhost:${PORT}`);
+    console.log(`Server is running on port ${PORT}`);
 });
